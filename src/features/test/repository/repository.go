@@ -63,6 +63,10 @@ func (r *repo) FindTestById(ctx context.Context, testId int) (*entities.Test, er
 	return &result, nil
 }
 
+func (r *repo) FindByTestId(ctx context.Context, testId int) (*entities.Test, error) {
+	return r.FindTestById(ctx, testId)
+}
+
 func (r *repo) FindTestByUserId(ctx context.Context, userId int) ([]entities.Test, error) {
 	db := r.GetDB(ctx)
 
