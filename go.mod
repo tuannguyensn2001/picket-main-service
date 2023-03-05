@@ -10,8 +10,8 @@ require (
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/viper v1.15.0
 	go.uber.org/zap v1.21.0
-	google.golang.org/genproto v0.0.0-20221227171554-f9683d7f8bef
-	google.golang.org/grpc v1.52.0
+	google.golang.org/genproto v0.0.0-20230110181048-76db0878b65f
+	google.golang.org/grpc v1.53.0
 	google.golang.org/protobuf v1.28.1
 	gorm.io/driver/postgres v1.4.7
 	gorm.io/gorm v1.24.5
@@ -21,6 +21,8 @@ require (
 	github.com/avast/retry-go v3.0.0+incompatible // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
+	github.com/go-logr/logr v1.2.3 // indirect
+	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.11.2 // indirect
@@ -57,6 +59,15 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.4.2 // indirect
 	github.com/ugorji/go/codec v1.2.9 // indirect
+	github.com/uptrace/opentelemetry-go-extra/otelgorm v0.1.21 // indirect
+	github.com/uptrace/opentelemetry-go-extra/otelsql v0.1.21 // indirect
+	go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin v0.40.0 // indirect
+	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.40.0 // indirect
+	go.opentelemetry.io/otel v1.14.0 // indirect
+	go.opentelemetry.io/otel/exporters/jaeger v1.13.0 // indirect
+	go.opentelemetry.io/otel/metric v0.37.0 // indirect
+	go.opentelemetry.io/otel/sdk v1.13.0 // indirect
+	go.opentelemetry.io/otel/trace v1.14.0 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	golang.org/x/crypto v0.6.0 // indirect

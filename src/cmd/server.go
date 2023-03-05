@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"net/http"
 	"os"
 	"os/signal"
@@ -26,6 +27,8 @@ func server(config config.IConfig) *cobra.Command {
 				gin.SetMode(gin.ReleaseMode)
 			}
 			r := gin.Default()
+
+			r.Use(otelgin.Middleware("picket-main-service"))
 
 			routes.Routes(ctx, r, config)
 

@@ -3,6 +3,7 @@ package routes
 import (
 	"context"
 	"github.com/gin-gonic/gin"
+	"net/http"
 	"picket-main-service/src/config"
 	answersheet_transport "picket-main-service/src/features/answersheet/transport"
 	answersheet_usecase "picket-main-service/src/features/answersheet/usecase"
@@ -34,8 +35,14 @@ func Routes(ctx context.Context, r *gin.Engine, config config.IConfig) {
 	testUsecase := test_usecase.New(testRepository)
 	testTransport := test_transport.New(ctx, testUsecase)
 
-	answersheetUsecase := answersheet_usecase.New(nil, testUsecase, jobUsecase)
+	answersheetUsecase := answersheet_usecase.New(nil, testUsecase, jobUsecase, config)
 	answersheetTransport := answersheet_transport.New(ctx, answersheetUsecase)
+
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"message": "success",
+		})
+	})
 
 	g := r.Group("/api")
 	{

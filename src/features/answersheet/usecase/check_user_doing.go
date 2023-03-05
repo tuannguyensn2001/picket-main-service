@@ -3,25 +3,20 @@ package answersheet_usecase
 import (
 	"context"
 	"github.com/rs/zerolog/log"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	answersheetpb "picket-main-service/src/pb/answer_sheet"
 	"time"
 )
 
 func (u *usecase) CheckUserDoingTest(ctx context.Context, userId int, testId int) (bool, error) {
-
-	client, err := grpc.Dial("localhost:30000", grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Error().Err(err).Send()
-		return false, err
-	}
-	defer client.Close()
-	conn := answersheetpb.NewAnswerSheetServiceClient(client)
+	ctx, span := tracer.Start(ctx, "check user doing test")
+	defer span.End()
+	conn := answersheetpb.NewAnswerSheetServiceClient(u.config.GetConnectToAnswersheetService())
+	ctx, span = tracer.Start(ctx, "call grpc to answersheet service to get latest time")
 	respGetLatestTime, err := conn.GetLatestStartTime(ctx, &answersheetpb.GetLatestStartTimeRequest{
 		TestId: int64(testId),
 		UserId: int64(userId),
 	})
+	span.End()
 	if err != nil {
 		log.Error().Err(err).Send()
 		return false, err
@@ -33,6 +28,7 @@ func (u *usecase) CheckUserDoingTest(ctx context.Context, userId int, testId int
 			log.Error().Err(err).Send()
 			return false, err
 		}
+
 		if test.TimeEnd != nil && test.TimeEnd.Before(time.Now()) {
 			return false, nil
 		}
@@ -40,10 +36,12 @@ func (u *usecase) CheckUserDoingTest(ctx context.Context, userId int, testId int
 			return false, nil
 		}
 	}
+	ctx, span = tracer.Start(ctx, "call grpc to answersheet service to check user doing test")
 	resp, err := conn.CheckUserDoingTest(ctx, &answersheetpb.CheckUserDoingTestRequest{
 		UserId: int64(userId),
 		TestId: int64(testId),
 	})
+	span.End()
 	if err != nil {
 		return false, err
 	}

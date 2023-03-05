@@ -15,8 +15,20 @@ import (
 
 var ErrUserDoingTest = app.NewRawError("user doing test", http.StatusConflict)
 var ErrTimeNotValid = app.NewRawError("time not valid", http.StatusConflict)
+var ErrDidTest = app.NewRawError("user did test", http.StatusConflict)
 
 func (u *usecase) Start(ctx context.Context, testId int, userId int) error {
+	ctx, span := tracer.Start(ctx, "start test")
+	defer span.End()
+	lastest, err := u.GetLatestStartTime(ctx, testId, userId)
+	if err != nil {
+		log.Error().Err(err).Send()
+	}
+	if lastest != nil {
+		log.Error().Err(ErrDidTest).Interface("time", lastest).Send()
+		return ErrDidTest
+	}
+
 	checkDoing, err := u.CheckUserDoingTest(ctx, userId, testId)
 	if err != nil {
 		log.Error().Err(err).Send()
@@ -27,7 +39,9 @@ func (u *usecase) Start(ctx context.Context, testId int, userId int) error {
 		return ErrUserDoingTest
 	}
 
+	ctx, span = tracer.Start(ctx, "get test by id")
 	test, err := u.testUsecase.GetById(ctx, testId)
+	span.End()
 	if err != nil {
 		log.Error().Err(err).Send()
 		return err
@@ -41,6 +55,11 @@ func (u *usecase) Start(ctx context.Context, testId int, userId int) error {
 	}
 
 	if test.TimeStart != nil {
+		log.Info().
+			Str("time start", test.TimeStart.UTC().Format("15:04:05 02/01/2006")).
+			Str("now", time.Now().UTC().Format("15:04:05 02/01/2006")).
+			Bool("after", test.TimeStart.After(time.Now())).
+			Send()
 		if test.TimeStart.After(time.Now()) {
 			log.Error().Err(ErrTimeNotValid).Send()
 			return ErrTimeNotValid
@@ -64,7 +83,9 @@ func (u *usecase) Start(ctx context.Context, testId int, userId int) error {
 		Status:  constant.INIT,
 		Topic:   "start-test",
 	}
+	ctx, span = tracer.Start(ctx, "insert job")
 	err = u.jobUsecase.Create(ctx, &job)
+	span.End()
 	if err != nil {
 		log.Error().Err(err).Send()
 		return err
@@ -85,10 +106,13 @@ func (u *usecase) Start(ctx context.Context, testId int, userId int) error {
 		Topic:                  "start-test",
 		AllowAutoTopicCreation: true,
 		MaxAttempts:            15,
+		BatchSize:              1,
 	}
+	ctx, span = tracer.Start(ctx, "push to kafka")
 	err = w.WriteMessages(ctx, kafka.Message{
 		Value: b.Bytes(),
 	})
+	span.End()
 	if err != nil {
 		log.Error().Err(err).Send()
 		return err

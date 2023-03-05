@@ -13,10 +13,13 @@ func (u *usecase) GetTimeLeft(ctx context.Context, testId int, userId int) (*tim
 		return nil, err
 	}
 
-	if test.TimeEnd != nil {
-		left := test.TimeEnd.Sub(time.Now())
-		return &left, nil
-	}
+	//if test.TimeEnd != nil {
+	//	log.Info().Str("time-end", test.TimeEnd.UTC().Format("15:04:05 02/01/2006")).
+	//		Str("now", time.Now().UTC().Format("15:04:05 02/01/2006")).
+	//		Send()
+	//	left := test.TimeEnd.Sub(time.Now())
+	//	return &left, nil
+	//}
 
 	latest, err := u.GetLatestStartTime(ctx, testId, userId)
 	if err != nil {

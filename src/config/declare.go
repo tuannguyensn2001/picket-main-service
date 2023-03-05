@@ -1,6 +1,9 @@
 package config
 
-import "gorm.io/gorm"
+import (
+	"google.golang.org/grpc"
+	"gorm.io/gorm"
+)
 
 type IConfig interface {
 	GetDB() *gorm.DB
@@ -10,6 +13,7 @@ type IConfig interface {
 	GetGoogleClientId() string
 	GetGoogleClientSecret() string
 	GetClientUrl() string
+	GetConnectToAnswersheetService() *grpc.ClientConn
 }
 
 func (c config) GetDB() *gorm.DB {
@@ -38,4 +42,8 @@ func (c config) GetGoogleClientSecret() string {
 
 func (c config) GetClientUrl() string {
 	return c.clientUrl
+}
+
+func (c config) GetConnectToAnswersheetService() *grpc.ClientConn {
+	return c.connToAnswersheetService
 }

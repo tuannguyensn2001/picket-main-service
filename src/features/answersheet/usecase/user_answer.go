@@ -15,6 +15,8 @@ import (
 )
 
 func (u *usecase) UserAnswer(ctx context.Context, userId int, input dto.UserAnswerInput) error {
+	ctx, span := tracer.Start(ctx, "user answer")
+	defer span.End()
 
 	validate := validator.New()
 	if err := validate.Struct(input); err != nil {
@@ -22,7 +24,9 @@ func (u *usecase) UserAnswer(ctx context.Context, userId int, input dto.UserAnsw
 		return err
 	}
 
+	ctx, span = tracer.Start(ctx, "check user doing test")
 	check, err := u.CheckUserDoingTest(ctx, userId, input.TestId)
+	span.End()
 	if err != nil {
 		log.Error().Err(err).Send()
 		return err
@@ -32,17 +36,24 @@ func (u *usecase) UserAnswer(ctx context.Context, userId int, input dto.UserAnsw
 		return ErrUserDoingTest
 	}
 
+	ctx, span = tracer.Start(ctx, "check test can do")
 	err = u.testUsecase.CheckTestCanDo(ctx, input.TestId)
+	span.End()
 	if err != nil {
 		log.Error().Err(err).Send()
 		return err
 	}
 
+	ctx, span = tracer.Start(ctx, "check test and question valid")
 	err = u.testUsecase.CheckTestAndQuestionValid(ctx, input.TestId, input.QuestionId)
+	span.End()
 	if err != nil {
 		log.Error().Err(err).Send()
 		return err
 	}
+
+	ctx, span = tracer.Start(ctx, "push to kafka")
+	defer span.End()
 
 	event := map[string]interface{}{
 		"user_id":         userId,
@@ -74,6 +85,7 @@ func (u *usecase) UserAnswer(ctx context.Context, userId int, input dto.UserAnsw
 		Topic:                  "answer-test",
 		AllowAutoTopicCreation: true,
 		MaxAttempts:            15,
+		BatchSize:              1,
 	}
 	key := fmt.Sprintf("%d-%d", userId, input.TestId)
 	b.Reset()
