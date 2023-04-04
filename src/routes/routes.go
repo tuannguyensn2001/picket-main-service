@@ -32,10 +32,10 @@ func Routes(ctx context.Context, r *gin.Engine, config config.IConfig) {
 	jobRepository := job_repository.New(config.GetDB())
 	jobUsecase := job_usecase.New(jobRepository)
 	testRepository := test_repository.New(config.GetDB())
-	testUsecase := test_usecase.New(testRepository)
+	testUsecase := test_usecase.New(testRepository, config.GetRedis())
 	testTransport := test_transport.New(ctx, testUsecase)
 
-	answersheetUsecase := answersheet_usecase.New(nil, testUsecase, jobUsecase, config)
+	answersheetUsecase := answersheet_usecase.New(nil, testUsecase, jobUsecase, config, config.GetRedis())
 	answersheetTransport := answersheet_transport.New(ctx, answersheetUsecase)
 
 	r.GET("/health", func(c *gin.Context) {

@@ -10,6 +10,7 @@ import (
 func (u *usecase) GetContent(ctx context.Context, testId int, userId int) (*dto.GetContentOutput, error) {
 	ctx, span := tracer.Start(ctx, "get content")
 	defer span.End()
+
 	check, err := u.CheckUserDoingTest(ctx, userId, testId)
 	if err != nil {
 		log.Error().Err(err).Send()

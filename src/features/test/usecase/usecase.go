@@ -1,10 +1,17 @@
 package test_usecase
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"github.com/avast/retry-go"
 	"github.com/go-playground/validator/v10"
+	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"picket-main-service/src/app"
 	"picket-main-service/src/base"
 	"picket-main-service/src/constant"
@@ -13,6 +20,7 @@ import (
 	randompkg "picket-main-service/src/pkg/random"
 	"picket-main-service/src/utils"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -32,10 +40,29 @@ type IRepository interface {
 
 type usecase struct {
 	repository IRepository
+	redis      IRedis
+	lock       locking
 }
 
-func New(repository IRepository) *usecase {
-	return &usecase{repository: repository}
+type locking struct {
+	getContent sync.Mutex
+	getById    sync.Mutex
+}
+
+var tracer = otel.Tracer("test_usecase")
+
+type IRedis interface {
+	Get(ctx context.Context, key string) *redis.StringCmd
+	Set(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.StatusCmd
+}
+
+func New(repository IRepository, redis IRedis) *usecase {
+	var mu sync.Mutex
+	lock := locking{
+		getContent: mu,
+		getById:    mu,
+	}
+	return &usecase{repository: repository, redis: redis, lock: lock}
 }
 
 func (u *usecase) ParseTimeTest(ctx context.Context, val string) (*time.Time, error) {
@@ -131,14 +158,128 @@ func (u *usecase) GetTestsByUserId(ctx context.Context, userId int) ([]entities.
 	return result, nil
 }
 
+func (u *usecase) GetByIdFromRedis(ctx context.Context, id int) *entities.Test {
+	ctx, span := tracer.Start(ctx, "get test from redis")
+	defer span.End()
+	result := u.redis.Get(ctx, fmt.Sprintf("test-%d", id))
+	if result.Err() != nil {
+		log.Error().Err(result.Err()).Send()
+		return nil
+	}
+	var output entities.Test
+	err := json.NewDecoder(strings.NewReader(result.Val())).Decode(&output)
+	if err != nil {
+		log.Error().Err(err).Send()
+		return nil
+	}
+	return &output
+}
+func (u *usecase) SaveTestToRedis(ctx context.Context, test *entities.Test) error {
+	ctx, span := tracer.Start(ctx, "save test to redis")
+	defer span.End()
+	b := new(bytes.Buffer)
+	err := json.NewEncoder(b).Encode(&test)
+	if err != nil {
+		log.Error().Err(err).Send()
+		return err
+	}
+	var timeDuration time.Duration
+	if test.TimeEnd != nil {
+		timeDuration = test.TimeEnd.Sub(time.Now())
+	} else {
+		timeDuration = time.Duration(test.TimeToDo) * time.Minute
+	}
+	result := u.redis.Set(ctx, fmt.Sprintf("test-%d", test.Id), b.String(), timeDuration)
+	if result.Err() != nil {
+		log.Error().Err(result.Err()).Send()
+		return result.Err()
+	}
+
+	return nil
+}
+
 func (u *usecase) GetById(ctx context.Context, id int) (*entities.Test, error) {
-	return u.repository.FindByTestId(ctx, id)
+	test := u.GetByIdFromRedis(ctx, id)
+	if test != nil {
+		return test, nil
+	}
+
+	u.lock.getById.Lock()
+	defer u.lock.getById.Unlock()
+	test = u.GetByIdFromRedis(ctx, id)
+	if test != nil {
+		return test, nil
+	}
+
+	test, err := u.repository.FindByTestId(ctx, id)
+	if err != nil {
+		log.Error().Err(err).Send()
+		return nil, err
+	}
+
+	retry.Do(func() error {
+		return u.SaveTestToRedis(ctx, test)
+	})
+
+	return test, nil
+}
+
+func (u *usecase) GetContentFromRedis(ctx context.Context, testId int) *entities.TestContent {
+	ctx, span := tracer.Start(ctx, "get content from redis")
+	if span.IsRecording() {
+		span.SetAttributes(attribute.Int("test_id", testId))
+	}
+	defer span.End()
+	result := u.redis.Get(ctx, fmt.Sprintf("test-content-%d", testId))
+	if result.Err() != nil {
+		return nil
+	}
+	var output entities.TestContent
+	err := json.NewDecoder(strings.NewReader(result.Val())).Decode(&output)
+	if err != nil {
+		return nil
+	}
+	log.Info().Interface("content", output).Msg("get content from redis")
+	return &output
+}
+
+func (u *usecase) SaveContentToRedis(ctx context.Context, content *entities.TestContent) error {
+	ctx, span := tracer.Start(ctx, "save content to redis")
+	defer span.End()
+	b := new(bytes.Buffer)
+	err := json.NewEncoder(b).Encode(content)
+	if err != nil {
+		log.Error().Err(err).Send()
+		return err
+	}
+	timeDuration, ok := ctx.Value("time_expire_test").(time.Duration)
+	if !ok {
+		timeDuration = 2 * time.Minute
+	}
+	result := u.redis.Set(ctx, fmt.Sprintf("test-content-%d", content.TestId), b.String(), timeDuration)
+	if result.Err() != nil {
+		log.Error().Err(err).Send()
+		return result.Err()
+	}
+	return nil
 }
 
 func (u *usecase) GetContent(ctx context.Context, testId int) (*entities.TestContent, error) {
+	content := u.GetContentFromRedis(ctx, testId)
+	if content != nil {
+		return content, nil
+	}
+
+	log.Info().Msg("lock")
+	u.lock.getContent.Lock()
+	defer u.lock.getContent.Unlock()
+
+	content = u.GetContentFromRedis(ctx, testId)
+	if content != nil {
+		return content, nil
+	}
 
 	content, err := u.repository.FindContentByTestId(ctx, testId)
-
 	if err != nil {
 		return nil, err
 	}
@@ -152,6 +293,27 @@ func (u *usecase) GetContent(ctx context.Context, testId int) (*entities.TestCon
 	}
 	multipleChoice.Answers = answers
 	content.MultipleChoice = multipleChoice
+
+	log.Info().Msg("unlock")
+	//go func() {
+
+	//}()
+	retry.Do(func() error {
+
+		test, err := u.repository.FindByTestId(ctx, testId)
+		if err != nil {
+			log.Error().Err(err).Send()
+			return err
+		}
+		var timeExpire time.Duration
+		if test.TimeEnd != nil {
+			timeExpire = test.TimeEnd.Sub(time.Now())
+		} else {
+			timeExpire = time.Duration(test.TimeToDo) * time.Minute
+		}
+		ctx = context.WithValue(ctx, "time_expire_test", timeExpire)
+		return u.SaveContentToRedis(ctx, content)
+	}, retry.Attempts(5))
 
 	return content, nil
 }

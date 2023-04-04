@@ -1,6 +1,9 @@
 package config
 
 import (
+	"context"
+	"github.com/redis/go-redis/v9"
+	"github.com/rs/zerolog/log"
 	"github.com/uptrace/opentelemetry-go-extra/otelgorm"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
@@ -21,6 +24,7 @@ type config struct {
 	clientUrl                string
 	db                       *gorm.DB
 	connToAnswersheetService *grpc.ClientConn
+	redis                    *redis.Client
 }
 
 func GetConfig() (*config, error) {
@@ -39,6 +43,21 @@ func GetConfig() (*config, error) {
 		return nil, err
 	}
 
+	rd := redis.NewClient(&redis.Options{
+		Addr: structure.RedisUrl,
+		//Password: "",
+		DB: 1,
+		OnConnect: func(ctx context.Context, cn *redis.Conn) error {
+			log.Info().Interface("connect", cn).Msg("on connect redis")
+			return nil
+		},
+	})
+	status := rd.Ping(context.TODO())
+	log.Info().Interface("status", status).Send()
+	if status.Err() != nil {
+		return nil, status.Err()
+	}
+
 	result := config{
 		appHttpPort:              structure.AppHttpPort,
 		appGrpcPort:              structure.AppGrpcPort,
@@ -50,6 +69,7 @@ func GetConfig() (*config, error) {
 		clientUrl:                structure.ClientUrl,
 		db:                       db,
 		connToAnswersheetService: client,
+		redis:                    rd,
 	}
 
 	return &result, nil

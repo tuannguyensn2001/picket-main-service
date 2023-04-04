@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
 	"gorm.io/gorm"
 )
@@ -14,6 +15,7 @@ type IConfig interface {
 	GetGoogleClientSecret() string
 	GetClientUrl() string
 	GetConnectToAnswersheetService() *grpc.ClientConn
+	GetRedis() *redis.Client
 }
 
 func (c config) GetDB() *gorm.DB {
@@ -46,4 +48,8 @@ func (c config) GetClientUrl() string {
 
 func (c config) GetConnectToAnswersheetService() *grpc.ClientConn {
 	return c.connToAnswersheetService
+}
+
+func (c config) GetRedis() *redis.Client {
+	return c.redis
 }
