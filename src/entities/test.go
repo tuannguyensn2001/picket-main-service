@@ -23,6 +23,7 @@ type Test struct {
 	UpdatedAt          *time.Time      `json:"updated_at" gorm:"column:updated_at"`
 	DeletedAt          *gorm.DeletedAt `json:"deleted_at,omitempty"`
 	Version            int             `json:"version" gorm:"column:version"`
+	Content            *TestContent    `json:"content" gorm:"-"`
 }
 
 type TestContent struct {

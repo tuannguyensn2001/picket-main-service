@@ -17,3 +17,8 @@ type UserAnswerInput struct {
 	Answer         string `json:"answer" form:"answer" binding:"required"`
 	PreviousAnswer string `json:"previous_answer" form:"previous_answer" `
 }
+
+type SubmitTestInput struct {
+	UserId int
+	TestId int `json:"test_id" form:"test_id" binding:"required"`
+}

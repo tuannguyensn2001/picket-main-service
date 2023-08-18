@@ -29,6 +29,7 @@ type AnswerSheetServiceClient interface {
 	GetLatestStartTime(ctx context.Context, in *GetLatestStartTimeRequest, opts ...grpc.CallOption) (*GetLatestStartTimeResponse, error)
 	GetCurrentTest(ctx context.Context, in *GetCurrentTestRequest, opts ...grpc.CallOption) (*GetCurrentTestResponse, error)
 	SubmitTest(ctx context.Context, in *SubmitTestRequest, opts ...grpc.CallOption) (*SubmitTestResponse, error)
+	CheckUserSubmitted(ctx context.Context, in *CheckUserSubmittedRequest, opts ...grpc.CallOption) (*CheckUserSubmittedResponse, error)
 }
 
 type answerSheetServiceClient struct {
@@ -102,6 +103,15 @@ func (c *answerSheetServiceClient) SubmitTest(ctx context.Context, in *SubmitTes
 	return out, nil
 }
 
+func (c *answerSheetServiceClient) CheckUserSubmitted(ctx context.Context, in *CheckUserSubmittedRequest, opts ...grpc.CallOption) (*CheckUserSubmittedResponse, error) {
+	out := new(CheckUserSubmittedResponse)
+	err := c.cc.Invoke(ctx, "/answer_sheet.AnswerSheetService/CheckUserSubmitted", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AnswerSheetServiceServer is the server API for AnswerSheetService service.
 // All implementations must embed UnimplementedAnswerSheetServiceServer
 // for forward compatibility
@@ -113,6 +123,7 @@ type AnswerSheetServiceServer interface {
 	GetLatestStartTime(context.Context, *GetLatestStartTimeRequest) (*GetLatestStartTimeResponse, error)
 	GetCurrentTest(context.Context, *GetCurrentTestRequest) (*GetCurrentTestResponse, error)
 	SubmitTest(context.Context, *SubmitTestRequest) (*SubmitTestResponse, error)
+	CheckUserSubmitted(context.Context, *CheckUserSubmittedRequest) (*CheckUserSubmittedResponse, error)
 	mustEmbedUnimplementedAnswerSheetServiceServer()
 }
 
@@ -140,6 +151,9 @@ func (UnimplementedAnswerSheetServiceServer) GetCurrentTest(context.Context, *Ge
 }
 func (UnimplementedAnswerSheetServiceServer) SubmitTest(context.Context, *SubmitTestRequest) (*SubmitTestResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SubmitTest not implemented")
+}
+func (UnimplementedAnswerSheetServiceServer) CheckUserSubmitted(context.Context, *CheckUserSubmittedRequest) (*CheckUserSubmittedResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CheckUserSubmitted not implemented")
 }
 func (UnimplementedAnswerSheetServiceServer) mustEmbedUnimplementedAnswerSheetServiceServer() {}
 
@@ -280,6 +294,24 @@ func _AnswerSheetService_SubmitTest_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AnswerSheetService_CheckUserSubmitted_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CheckUserSubmittedRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AnswerSheetServiceServer).CheckUserSubmitted(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/answer_sheet.AnswerSheetService/CheckUserSubmitted",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AnswerSheetServiceServer).CheckUserSubmitted(ctx, req.(*CheckUserSubmittedRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AnswerSheetService_ServiceDesc is the grpc.ServiceDesc for AnswerSheetService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -314,6 +346,10 @@ var AnswerSheetService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SubmitTest",
 			Handler:    _AnswerSheetService_SubmitTest_Handler,
+		},
+		{
+			MethodName: "CheckUserSubmitted",
+			Handler:    _AnswerSheetService_CheckUserSubmitted_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

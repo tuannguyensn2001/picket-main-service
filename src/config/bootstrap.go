@@ -17,6 +17,8 @@ type structure struct {
 	ClientUrl                string `mapstructure:"CLIENT_URL"`
 	DatabaseUrl              string `mapstructure:"DATABASE_URL"`
 	RedisUrl                 string `mapstructure:"REDIS_URL"`
+	KafkaUrl                 string `mapstructure:"KAFKA_URL"`
+	AnswerSheetService       string `mapstructure:"ANSWERSHEET_SERVICE"`
 }
 
 func bootstrap() structure {

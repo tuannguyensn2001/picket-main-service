@@ -65,23 +65,27 @@ func (u *usecase) UserAnswer(ctx context.Context, userId int, input dto.UserAnsw
 		"created_at":      time.Now(),
 		"updated_at":      time.Now(),
 	}
+	ctx, span = tracer.Start(ctx, "encode json")
 	b := new(bytes.Buffer)
 	if err := json.NewEncoder(b).Encode(event); err != nil {
 		log.Error().Err(err).Send()
 		return err
 	}
+	span.End()
 	job := entities.Job{
 		Payload: b.String(),
 		Status:  constant.INIT,
 		Topic:   "answer-test",
 	}
+	ctx, span = tracer.Start(ctx, "create job usecase")
 	if err := u.jobUsecase.Create(ctx, &job); err != nil {
 		log.Error().Err(err).Send()
 		return err
 	}
+	span.End()
 
 	w := &kafka.Writer{
-		Addr:                   kafka.TCP("localhost:9092"),
+		Addr:                   kafka.TCP(u.config.GetKafkaUrl()),
 		Topic:                  "answer-test",
 		AllowAutoTopicCreation: true,
 		MaxAttempts:            15,
@@ -96,6 +100,7 @@ func (u *usecase) UserAnswer(ctx context.Context, userId int, input dto.UserAnsw
 		log.Error().Err(err).Send()
 		return err
 	}
+	ctx, span = tracer.Start(ctx, "write message")
 	if err := w.WriteMessages(ctx, kafka.Message{
 		Key:   []byte(key),
 		Value: b.Bytes(),
@@ -103,6 +108,7 @@ func (u *usecase) UserAnswer(ctx context.Context, userId int, input dto.UserAnsw
 		log.Error().Err(err).Send()
 		return err
 	}
+	span.End()
 
 	return nil
 }

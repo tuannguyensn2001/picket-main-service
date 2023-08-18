@@ -126,6 +126,14 @@ message SubmitTestResponse {
   string message = 1;
 }
 
+message CheckUserSubmittedRequest {
+  int64  test_id = 1;
+  int64  user_id = 2;
+}
+
+message CheckUserSubmittedResponse {
+  bool  data = 1;
+}
 
 service AnswerSheetService {
   rpc StartDoTest(StartDoTestRequest) returns(StartDoTestResponse) {
@@ -162,5 +170,7 @@ service AnswerSheetService {
       body: "*"
     };
   }
+  rpc CheckUserSubmitted(CheckUserSubmittedRequest) returns(CheckUserSubmittedResponse);
+
 
 }

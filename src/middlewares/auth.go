@@ -13,6 +13,16 @@ import (
 
 func CheckAuth(config config.IConfig) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
+
+		//var list []int
+		//for i := 0; i < 1000; i++ {
+		//	list = append(list, i+1)
+		//}
+		//userId := lo.Sample(list)
+		//ctx.Set("user_id", userId)
+		//ctx.Next()
+		//
+		//return
 		token, err := utils.GetBearerToken(ctx.GetHeader("authorization"))
 		if err != nil {
 			log.Error().Err(err).Send()

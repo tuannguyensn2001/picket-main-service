@@ -6,6 +6,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"picket-main-service/src/config"
 	"picket-main-service/src/entities"
+	"time"
 )
 
 type IRepository interface {
@@ -30,6 +31,7 @@ type ITestUsecase interface {
 
 type IRedis interface {
 	Get(ctx context.Context, key string) *redis.StringCmd
+	Set(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.StatusCmd
 }
 
 type IJobUsecase interface {

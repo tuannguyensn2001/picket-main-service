@@ -11,6 +11,7 @@ import (
 	auth_transport "picket-main-service/src/features/auth/transport"
 	auth_usecase "picket-main-service/src/features/auth/usecase"
 	job_repository "picket-main-service/src/features/job/repository"
+	job_transport "picket-main-service/src/features/job/transport"
 	job_usecase "picket-main-service/src/features/job/usecase"
 	test_repository "picket-main-service/src/features/test/repository"
 	test_transport "picket-main-service/src/features/test/transport"
@@ -37,6 +38,7 @@ func Routes(ctx context.Context, r *gin.Engine, config config.IConfig) {
 
 	answersheetUsecase := answersheet_usecase.New(nil, testUsecase, jobUsecase, config, config.GetRedis())
 	answersheetTransport := answersheet_transport.New(ctx, answersheetUsecase)
+	job_transport.New(ctx, jobUsecase, config)
 
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
@@ -57,5 +59,8 @@ func Routes(ctx context.Context, r *gin.Engine, config config.IConfig) {
 		g.GET("/v1/answersheets/test/:id/assignment", middlewares.CheckAuth(config), answersheetTransport.GetCurrentTest)
 		g.POST("/v1/answersheets/answer", middlewares.CheckAuth(config), answersheetTransport.UserAnswer)
 		g.GET("/v1/tests/preview/:id", testTransport.GetPreview)
+		g.POST("/v1/answersheets/submit", middlewares.CheckAuth(config), answersheetTransport.SubmitTest)
+
+		g.GET("/v2/answersheets/test/:id/content", middlewares.CheckAuth(config), answersheetTransport.GetContent)
 	}
 }

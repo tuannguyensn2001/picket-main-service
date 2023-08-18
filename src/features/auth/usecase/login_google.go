@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
 	"gorm.io/gorm"
 	"picket-main-service/src/app"
 	"picket-main-service/src/dto"
@@ -14,6 +15,7 @@ import (
 )
 
 var ErrCodeNotValid = app.NewBadRequestError(errors.New("code not valid"))
+var tracer = otel.Tracer("auth_usecase")
 
 func (u *usecase) LoginGoogle(ctx context.Context, code string) (*dto.LoginOutput, error) {
 	if len(code) == 0 {

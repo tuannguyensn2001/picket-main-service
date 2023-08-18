@@ -2,9 +2,13 @@ package answersheet_usecase
 
 import (
 	"context"
+	"errors"
 	"github.com/rs/zerolog/log"
+	"picket-main-service/src/app"
 	"time"
 )
+
+var ErrTimeTestNotValid = app.NewBadRequestError(errors.New("time test not valid"))
 
 func (u *usecase) GetTimeLeft(ctx context.Context, testId int, userId int) (*time.Duration, error) {
 	test, err := u.testUsecase.GetById(ctx, testId)
@@ -36,6 +40,9 @@ func (u *usecase) GetTimeLeft(ctx context.Context, testId int, userId int) (*tim
 		Send()
 
 	left := latest.Add(time.Duration(test.TimeToDo) * time.Minute).Sub(time.Now())
+	if left < 0 {
+		return nil, ErrTimeTestNotValid
+	}
 
 	return &left, nil
 }

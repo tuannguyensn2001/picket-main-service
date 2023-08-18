@@ -16,6 +16,7 @@ type IConfig interface {
 	GetClientUrl() string
 	GetConnectToAnswersheetService() *grpc.ClientConn
 	GetRedis() *redis.Client
+	GetKafkaUrl() string
 }
 
 func (c config) GetDB() *gorm.DB {
@@ -52,4 +53,8 @@ func (c config) GetConnectToAnswersheetService() *grpc.ClientConn {
 
 func (c config) GetRedis() *redis.Client {
 	return c.redis
+}
+
+func (c config) GetKafkaUrl() string {
+	return c.KafkaUrl
 }

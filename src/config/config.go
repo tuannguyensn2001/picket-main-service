@@ -25,6 +25,7 @@ type config struct {
 	db                       *gorm.DB
 	connToAnswersheetService *grpc.ClientConn
 	redis                    *redis.Client
+	KafkaUrl                 string
 }
 
 func GetConfig() (*config, error) {
@@ -37,15 +38,18 @@ func GetConfig() (*config, error) {
 		return nil, err
 	}
 	db.Use(otelgorm.NewPlugin())
+	d, _ := db.DB()
 
-	client, err := grpc.Dial("localhost:30000", grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()))
+	d.SetMaxOpenConns(1000)
+
+	client, err := grpc.Dial(structure.AnswerSheetService, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()))
 	if err != nil {
 		return nil, err
 	}
 
 	rd := redis.NewClient(&redis.Options{
 		Addr: structure.RedisUrl,
-		//Password: "",
+		//Password: "mypassword",
 		DB: 1,
 		OnConnect: func(ctx context.Context, cn *redis.Conn) error {
 			log.Info().Interface("connect", cn).Msg("on connect redis")
@@ -70,6 +74,7 @@ func GetConfig() (*config, error) {
 		db:                       db,
 		connToAnswersheetService: client,
 		redis:                    rd,
+		KafkaUrl:                 structure.KafkaUrl,
 	}
 
 	return &result, nil

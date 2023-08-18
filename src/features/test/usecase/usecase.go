@@ -271,8 +271,11 @@ func (u *usecase) GetContent(ctx context.Context, testId int) (*entities.TestCon
 	}
 
 	log.Info().Msg("lock")
-	u.lock.getContent.Lock()
-	defer u.lock.getContent.Unlock()
+	hasLock, ok := ctx.Value("hasLock").(bool)
+	if hasLock && ok {
+		u.lock.getContent.Lock()
+		defer u.lock.getContent.Unlock()
+	}
 
 	content = u.GetContentFromRedis(ctx, testId)
 	if content != nil {
@@ -398,6 +401,10 @@ func (u *usecase) CreateMultipleChoiceContent(ctx context.Context, input dto.Cre
 }
 
 func (u *usecase) CheckTestCanDo(ctx context.Context, testId int) error {
+	result, _ := u.redis.Get(ctx, fmt.Sprintf("check-test-can-do-%d", testId)).Result()
+	if len(result) != 0 {
+		return nil
+	}
 
 	test, err := u.repository.FindByTestId(ctx, testId)
 	if err != nil {
@@ -414,10 +421,18 @@ func (u *usecase) CheckTestCanDo(ctx context.Context, testId int) error {
 		}
 	}
 
+	go func() {
+		u.redis.Set(context.TODO(), fmt.Sprintf("check-test-can-do-%d", testId), true, 1*time.Minute)
+	}()
+
 	return nil
 }
 
 func (u *usecase) CheckTestAndQuestionValid(ctx context.Context, testId int, questionId int) error {
+	result, _ := u.redis.Get(ctx, fmt.Sprintf("check-test-and-question-valid-%d-%d", testId, questionId)).Result()
+	if len(result) != 0 {
+		return nil
+	}
 
 	content, err := u.repository.FindContentByTestId(ctx, testId)
 	if err != nil {
@@ -441,6 +456,9 @@ func (u *usecase) CheckTestAndQuestionValid(ctx context.Context, testId int, que
 			return errors.New("question not valid")
 		}
 	}
+	go func() {
+		u.redis.Set(context.TODO(), fmt.Sprintf("check-test-and-question-valid-%d-%d", testId, questionId), true, 1*time.Minute)
+	}()
 
 	return nil
 }

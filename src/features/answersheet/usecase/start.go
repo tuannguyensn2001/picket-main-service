@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/avast/retry-go"
 	"github.com/rs/zerolog/log"
 	"github.com/segmentio/kafka-go"
 	"net/http"
@@ -20,14 +21,14 @@ var ErrDidTest = app.NewRawError("user did test", http.StatusConflict)
 func (u *usecase) Start(ctx context.Context, testId int, userId int) error {
 	ctx, span := tracer.Start(ctx, "start test")
 	defer span.End()
-	lastest, err := u.GetLatestStartTime(ctx, testId, userId)
-	if err != nil {
-		log.Error().Err(err).Send()
-	}
-	if lastest != nil {
-		log.Error().Err(ErrDidTest).Interface("time", lastest).Send()
-		return ErrDidTest
-	}
+	//lastest, err := u.GetLatestStartTime(ctx, testId, userId)
+	//if err != nil {
+	//	log.Error().Err(err).Send()
+	//}
+	//if lastest != nil {
+	//	log.Error().Err(ErrDidTest).Interface("time", lastest).Send()
+	//	return ErrDidTest
+	//}
 
 	checkDoing, err := u.CheckUserDoingTest(ctx, userId, testId)
 	if err != nil {
@@ -66,6 +67,15 @@ func (u *usecase) Start(ctx context.Context, testId int, userId int) error {
 		}
 	}
 
+	go func() {
+		err := retry.Do(func() error {
+			return u.SyncTestContent(context.Background(), testId)
+		})
+		if err != nil {
+			log.Ctx(ctx).Error().Err(err).Send()
+		}
+	}()
+
 	event := map[string]interface{}{
 		"user_id":    userId,
 		"test_id":    testId,
@@ -102,7 +112,7 @@ func (u *usecase) Start(ctx context.Context, testId int, userId int) error {
 	}
 
 	w := &kafka.Writer{
-		Addr:                   kafka.TCP("localhost:9092"),
+		Addr:                   kafka.TCP(u.config.GetKafkaUrl()),
 		Topic:                  "start-test",
 		AllowAutoTopicCreation: true,
 		MaxAttempts:            15,
