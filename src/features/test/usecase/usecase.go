@@ -264,6 +264,11 @@ func (u *usecase) SaveContentToRedis(ctx context.Context, content *entities.Test
 	return nil
 }
 
+//	read cache -> miss cache -> read db
+//
+// 10000 request
+// first request read cache -> miss cache -> read db -> save cache
+// 9999 request read cache
 func (u *usecase) GetContent(ctx context.Context, testId int) (*entities.TestContent, error) {
 	content := u.GetContentFromRedis(ctx, testId)
 	if content != nil {
